@@ -66,8 +66,17 @@ ORDER BY 2 DESC
 
 ---------- VACCINATION DATA ---------- 
 
-SELECT dth.continent, dth.location, dth.total_cases, vac.new_vaccinations
-FROM CovidDeaths dth
-JOIN CovidVaccinations vac
-	ON dth.location = vac.location
-	AND dth.date = vac.date
+WITH PopVsVac (continent, location, date, population, new_vaccinations, RollingPeopleVaccinated)
+AS
+(
+	SELECT dth.continent, dth.location, dth.date, dth.population, dth.new_vaccinations
+	, SUM(vac.new_vaccinations) OVER (PARTITION BY dth.location ORDER BY dth.location, dth.date) AS RollingPeopleVaccinated
+	FROM CovidDeaths dth
+	JOIN CovidVaccinations vac
+		ON dth.location = vac.location
+		AND dth.date = vac.date
+	WHERE dth.continent IS NOT NULL AND dth.location = 'Brazil'
+)
+SELECT *, (RollingPeopleVaccinated * 1.0/population) * 100 RollingPeopleVaccinatedPercentage
+FROM PopVsVac
+
